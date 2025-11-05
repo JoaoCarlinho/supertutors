@@ -1,0 +1,259 @@
+/**
+ * Accessibility Styles
+ * WCAG 2.1 AA Compliant
+ */
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Screen Reader Only - Visible on Focus */
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Skip Navigation Links */
+.skip-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1rem 1.5rem;
+  background: #ffffff;
+  color: #1f2937;
+  text-decoration: none;
+  font-weight: 600;
+  border: 2px solid #3b82f6;
+  border-radius: 0.25rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+}
+
+/* Focus Indicators - WCAG 2.1 AA Compliant */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Custom Button Focus */
+button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Input Focus */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 0;
+  border-color: #3b82f6;
+}
+
+/* Link Focus */
+a:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 0.125rem;
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  --text-primary: #000000;
+  --text-secondary: #1f2937;
+  --bg-primary: #ffffff;
+  --border-color: #000000;
+  --focus-color: #0000ff;
+}
+
+.high-contrast * {
+  border-color: var(--border-color) !important;
+}
+
+.high-contrast *:focus-visible {
+  outline-color: var(--focus-color);
+  outline-width: 3px;
+}
+
+/* Touch Target Sizing - WCAG 2.1 AA (44x44px minimum) */
+.btn,
+button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Icon Buttons */
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+/* Larger touch targets for canvas tools */
+.canvas-tool-btn {
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+}
+
+/* Adjacent button spacing (minimum 8px) */
+.button-group {
+  display: flex;
+  gap: 8px;
+}
+
+/* Responsive Images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent text selection during interactions */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Disable pinch-to-zoom on canvas */
+.canvas-container {
+  touch-action: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Animations - Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Color Contrast - WCAG AA Compliant Colors */
+:root {
+  /* Text colors (AA compliant on white) */
+  --text-primary: #1f2937; /* Gray 800, 16.2:1 */
+  --text-secondary: #4b5563; /* Gray 600, 7.5:1 */
+  --text-tertiary: #6b7280; /* Gray 500, 4.6:1 */
+
+  /* Background colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb; /* Gray 50 */
+  --bg-tertiary: #f3f4f6; /* Gray 100 */
+
+  /* Accent colors (AA compliant) */
+  --accent-blue: #1e40af; /* Blue 800, 8.6:1 */
+  --accent-green: #15803d; /* Green 700, 4.6:1 */
+  --accent-red: #b91c1c; /* Red 700, 5.9:1 */
+  --accent-orange: #c2410c; /* Orange 700, 5.3:1 */
+
+  /* Focus color */
+  --focus-color: #3b82f6; /* Blue 500 */
+}
+
+/* Ensure links are distinguishable (not color alone) */
+a {
+  text-decoration: underline;
+  color: var(--accent-blue);
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Error states: icon + color */
+.error {
+  color: var(--accent-red);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Success states: icon + color */
+.success {
+  color: var(--accent-green);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Mobile-first responsive utilities */
+@media (min-width: 768px) {
+  .md\:hidden {
+    display: none;
+  }
+
+  .md\:block {
+    display: block;
+  }
+
+  .md\:flex {
+    display: flex;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:hidden {
+    display: none;
+  }
+
+  .lg\:block {
+    display: block;
+  }
+
+  .lg\:flex {
+    display: flex;
+  }
+}
+
+/* Ensure adequate line spacing for readability */
+body {
+  line-height: 1.6;
+}
+
+p,
+li {
+  line-height: 1.7;
+}
+
+/* Ensure adequate paragraph spacing */
+p + p {
+  margin-top: 1rem;
+}
