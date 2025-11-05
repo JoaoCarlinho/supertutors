@@ -38,7 +38,8 @@
 
 .skip-link {
   position: absolute;
-  left: -9999px;
+  left: 1rem;
+  top: -100vh; /* Move up instead of left for better Playwright detection */
   z-index: 999;
   padding: 1rem 1.5rem;
   background: #ffffff;
@@ -48,10 +49,10 @@
   border: 2px solid #3b82f6;
   border-radius: 0.25rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: top 0.2s ease-in-out;
 }
 
 .skip-link:focus {
-  left: 1rem;
   top: 1rem;
 }
 

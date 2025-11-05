@@ -36,7 +36,7 @@ export function MessageList() {
         </div>
       )}
 
-      {messages.map((message) => (
+      {messages.map((message: Message) => (
         <div
           key={message.id}
           className={`flex ${message.role === 'student' ? 'justify-end' : 'justify-start'}`}

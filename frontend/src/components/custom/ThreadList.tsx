@@ -16,10 +16,12 @@ export function ThreadList() {
   const { currentConversationId } = useValues(conversationLogic);
   const { loadThread, setCurrentConversation, setMessages } = useActions(conversationLogic);
 
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
   const loadThreads = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5001/api/threads?limit=20');
+      const response = await fetch(`${apiUrl}/api/threads?limit=20`);
       if (response.ok) {
         const data = await response.json();
         setThreads(data);
@@ -52,7 +54,7 @@ export function ThreadList() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5001/api/threads/${threadId}`, {
+      const response = await fetch(`${apiUrl}/api/threads/${threadId}`, {
         method: 'DELETE',
       });
 

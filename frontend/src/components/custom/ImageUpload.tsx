@@ -1,4 +1,4 @@
-import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
+import React, { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
 
 interface ImageUploadProps {
   onImageSelected: (file: File) => void;
@@ -103,7 +103,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, onUpl
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('http://localhost:5001/api/images/upload', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/images/upload`, {
         method: 'POST',
         body: formData,
       });

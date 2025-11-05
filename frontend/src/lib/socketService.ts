@@ -10,7 +10,7 @@ import { io, Socket } from 'socket.io-client';
  * - Error handling
  */
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
 
 // Reconnection configuration: 1s, 2s, 4s, 8s, max 30s
 const RECONNECTION_DELAYS = [1000, 2000, 4000, 8000, 30000];

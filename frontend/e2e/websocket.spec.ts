@@ -27,6 +27,9 @@ test.describe('WebSocket Connection', () => {
 
     // Verify at least one WebSocket connection was established
     expect(wsConnections.length).toBeGreaterThan(0);
+
+    // Pause for 3 seconds to view final state
+    await page.waitForTimeout(3000);
   });
 
   test('should display connection status updates', async ({ page }) => {
@@ -38,6 +41,9 @@ test.describe('WebSocket Connection', () => {
     // Just verify some status is shown
     const statusCount = await page.locator('text=/connected|connecting|disconnected/i').count();
     expect(statusCount).toBeGreaterThan(0);
+
+    // Pause for 3 seconds to view final state
+    await page.waitForTimeout(3000);
   });
 
   test('should send and receive a message', async ({ page }) => {
@@ -60,7 +66,7 @@ test.describe('WebSocket Connection', () => {
 
     // Wait for message to appear in chat
     // Look for the message we just sent
-    await expect(page.getByText(testMessage)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(testMessage).first()).toBeVisible({ timeout: 5000 });
 
     // Wait for AI response (this may take a few seconds)
     // We'll wait to see if message count increases
@@ -72,6 +78,9 @@ test.describe('WebSocket Connection', () => {
 
     // Should have at least our sent message
     expect(messageCount).toBeGreaterThan(0);
+
+    // Pause for 3 seconds to view final state
+    await page.waitForTimeout(3000);
   });
 
   test('should handle reconnection when connection lost', async ({ page }) => {
@@ -92,6 +101,9 @@ test.describe('WebSocket Connection', () => {
     // Connection status should update
     const statusUpdated = await page.locator('text=/connect/i').count();
     expect(statusUpdated).toBeGreaterThan(0);
+
+    // Pause for 3 seconds to view final state
+    await page.waitForTimeout(3000);
   });
 
   test('should preserve messages across reconnection', async ({ page }) => {
@@ -106,7 +118,7 @@ test.describe('WebSocket Connection', () => {
     await sendButton.click();
 
     // Wait for message to appear
-    await expect(page.getByText('Test message for persistence')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Test message for persistence').first()).toBeVisible({ timeout: 5000 });
 
     // Simulate disconnect/reconnect
     await page.context().setOffline(true);
@@ -115,6 +127,9 @@ test.describe('WebSocket Connection', () => {
     await page.waitForTimeout(2000);
 
     // Message should still be visible after reconnection
-    await expect(page.getByText('Test message for persistence')).toBeVisible();
+    await expect(page.getByText('Test message for persistence').first()).toBeVisible();
+
+    // Pause for 3 seconds to view final state
+    await page.waitForTimeout(3000);
   });
 });

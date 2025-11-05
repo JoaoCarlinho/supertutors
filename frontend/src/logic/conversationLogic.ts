@@ -193,7 +193,8 @@ export const conversationLogic = kea({
 
     loadThread: async ({ threadId }) => {
       try {
-        const response = await fetch(`http://localhost:5001/api/threads/${threadId}`);
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+        const response = await fetch(`${apiUrl}/api/threads/${threadId}`);
         if (!response.ok) {
           throw new Error('Failed to load thread');
         }

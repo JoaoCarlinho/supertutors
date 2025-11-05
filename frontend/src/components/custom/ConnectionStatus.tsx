@@ -1,5 +1,5 @@
 import { useValues, useActions } from 'kea';
-import { conversationLogic } from '../../logic/conversationLogic';
+import { conversationLogic, type ConnectionStatus as ConnectionStatusType } from '../../logic/conversationLogic';
 import { Button } from '../ui/button';
 import {
   Tooltip,
@@ -22,25 +22,25 @@ export function ConnectionStatus() {
   const { connectionStatus, connectionError } = useValues(conversationLogic);
   const { reconnect } = useActions(conversationLogic);
 
-  const statusConfig = {
+  const statusConfig: Record<ConnectionStatusType, { color: string; label: string; ariaLabel: string }> = {
     connected: {
       color: 'bg-green-500',
       label: 'Connected',
-      ariaLabel: 'WebSocket connection is active',
+      ariaLabel: 'Connection status: Connected',
     },
     connecting: {
       color: 'bg-yellow-500 animate-pulse',
       label: 'Connecting...',
-      ariaLabel: 'WebSocket connection is being established',
+      ariaLabel: 'Connection status: Connecting',
     },
     disconnected: {
       color: 'bg-red-500',
       label: 'Disconnected',
-      ariaLabel: 'WebSocket connection is inactive',
+      ariaLabel: 'Connection status: Disconnected',
     },
   };
 
-  const config = statusConfig[connectionStatus];
+  const config = statusConfig[connectionStatus as ConnectionStatusType];
 
   return (
     <TooltipProvider>

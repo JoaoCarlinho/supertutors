@@ -2,7 +2,11 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright configuration for SuperTutors E2E tests
- * Configured for visible browser testing (headless: false)
+ * Supports both local dev and Docker environments
+ *
+ * Environment Variables:
+ * - PLAYWRIGHT_BASE_URL: Override base URL (default: http://localhost:5173)
+ * - PLAYWRIGHT_SKIP_WEBSERVER: Skip starting webServer (set to 'true' for Docker)
  */
 export default defineConfig({
   testDir: './e2e',
@@ -28,7 +32,7 @@ export default defineConfig({
   // Shared settings for all the projects below
   use: {
     // Base URL to use in actions like `await page.goto('/')`
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
 
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
@@ -77,10 +81,10 @@ export default defineConfig({
   ],
 
   // Run your local dev server before starting the tests
-  // NOTE: Set reuseExistingServer to true so we can manually start the dev server
-  webServer: {
+  // Skip if PLAYWRIGHT_SKIP_WEBSERVER=true (for Docker or when server is already running)
+  webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER === 'true' ? undefined : {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
     reuseExistingServer: true, // Always reuse existing server
     timeout: 120 * 1000,
   },

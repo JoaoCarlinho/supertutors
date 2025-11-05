@@ -18,14 +18,17 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit }) => {
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Get API URL from environment
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
   const handleImageUploadComplete = async (uploadedImageId: string, uploadedImageUrl: string) => {
-    setImageUrl(`http://localhost:5001${uploadedImageUrl}`);
+    setImageUrl(`${apiUrl}${uploadedImageUrl}`);
 
     // Start OCR processing
     setIsProcessing(true);
 
     try {
-      const response = await fetch('http://localhost:5001/api/images/ocr/extract', {
+      const response = await fetch(`${apiUrl}/api/images/ocr/extract`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +82,7 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit }) => {
     setIsProcessing(true);
 
     try {
-      const uploadResponse = await fetch('http://localhost:5001/api/images/upload', {
+      const uploadResponse = await fetch(`${apiUrl}/api/images/upload`, {
         method: 'POST',
         body: formData,
       });

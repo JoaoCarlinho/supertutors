@@ -10,4 +10,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    host: '0.0.0.0', // Allow access from outside container
+    port: 5173,      // Explicitly set port
+    strictPort: true, // Fail if port is already in use
+    watch: {
+      usePolling: true, // Required for Docker on some systems
+    },
+  },
 });

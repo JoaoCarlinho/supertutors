@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, type FormEvent, useEffect } from 'react';
 import { useActions } from 'kea';
 import { conversationLogic } from '../../logic/conversationLogic';
 import { Math } from './Math';
@@ -201,6 +201,7 @@ export function ChatInput() {
           onChange={(e) => handleInputChange(e.target.value)}
           placeholder={mathMode ? "Type math notation or LaTeX..." : "Type your message..."}
           className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Type your message"
         />
         <button
           type="submit"

@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind CSS v4 - uses @import instead of @tailwind directives */
+@import "tailwindcss";
 
 /* Accessibility Styles */
 @import './styles/accessibility.css';

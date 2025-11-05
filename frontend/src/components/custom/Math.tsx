@@ -59,7 +59,7 @@ export const MathContent: React.FC<MathContentProps> = ({ content }) => {
 
     // First, find display mode math ($$...$$)
     const displayRegex = /\$\$([\s\S]+?)\$\$/g;
-    let match;
+    let match: RegExpExecArray | null;
 
     // Collect all matches to process in order
     const allMatches: Array<{index: number, content: string, isDisplay: boolean}> = [];
@@ -79,8 +79,8 @@ export const MathContent: React.FC<MathContentProps> = ({ content }) => {
       // Check if this match is inside a display mode match
       const isInsideDisplay = allMatches.some(
         (displayMatch) =>
-          match.index >= displayMatch.index &&
-          match.index < displayMatch.index + displayMatch.content.length + 4 // $$...$$ length
+          match!.index >= displayMatch.index &&
+          match!.index < displayMatch.index + displayMatch.content.length + 4 // $$...$$ length
       );
 
       if (!isInsideDisplay) {
