@@ -1,0 +1,24 @@
+[MASTER]
+init-hook='import sys; sys.path.append(".")'
+
+[MESSAGES CONTROL]
+disable=
+    C0111,  # missing-docstring (we have type hints)
+    C0103,  # invalid-name (allow single letter variables)
+    R0903,  # too-few-public-methods (data classes are fine)
+    W0212,  # protected-access (allow for testing)
+    R0801,  # duplicate-code (common patterns OK)
+
+[FORMAT]
+max-line-length=100
+indent-string='    '
+
+[BASIC]
+good-names=i,j,k,ex,Run,_,id,bp,app
+
+[DESIGN]
+max-attributes=10
+max-args=7
+
+[TYPECHECK]
+generated-members=REQUEST,acl_users,aq_parent
