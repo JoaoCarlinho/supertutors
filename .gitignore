@@ -1,0 +1,5 @@
+docs/
+test-results/
+playwright-report/
+venv/
+node_modules/
