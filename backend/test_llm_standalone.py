@@ -45,8 +45,8 @@ def test_health_check():
         models = ollama.list()
         print(f"✓ Ollama connected successfully")
 
-        # Check if llama3.2-vision:11b is available
-        model_name = 'llama3.2-vision:11b'
+        # Check if llama3.2:latest is available
+        model_name = 'llama3.2:latest'
         model_available = any(
             model.model == model_name
             for model in models.models
@@ -81,7 +81,7 @@ def test_socratic_questioning():
     try:
         with timeout_handler(30):
             response = ollama.chat(
-                model='llama3.2-vision:11b',
+                model='llama3.2:latest',
                 messages=[
                     {'role': 'system', 'content': system_prompt},
                     {'role': 'user', 'content': user_prompt}
@@ -118,7 +118,7 @@ def test_response_validation():
     try:
         with timeout_handler(30):
             response = ollama.chat(
-                model='llama3.2-vision:11b',
+                model='llama3.2:latest',
                 messages=[
                     {'role': 'system', 'content': system_prompt},
                     {'role': 'user', 'content': user_prompt}

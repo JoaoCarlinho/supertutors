@@ -3,3 +3,15 @@ test-results/
 playwright-report/
 venv/
 node_modules/
+*/__pycache__/
+backend/app/__pycache__/__init__.cpython-311.pyc
+backend/app/__pycache__/config.cpython-311.pyc
+backend/app/__pycache__/extensions.cpython-311.pyc
+backend/app/models/__pycache__/__init__.cpython-311.pyc
+backend/app/models/__pycache__/conversation.cpython-311.pyc
+backend/app/models/__pycache__/message.cpython-311.pyc
+backend/app/routes/__pycache__/__init__.cpython-311.pyc
+backend/app/routes/__pycache__/health.cpython-311.pyc
+backend/app/routes/__pycache__/images.cpython-311.pyc
+backend/app/routes/__pycache__/socket_events.cpython-311.pyc
+backend/app/routes/__pycache__/threads.cpython-311.pyc

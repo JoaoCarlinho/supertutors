@@ -13,6 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U supertutors"]
       interval: 10s
@@ -46,8 +47,9 @@ services:
       CORS_ORIGINS: http://localhost:5173
       DATABASE_URL: postgresql://supertutors:devpassword@postgres:5432/supertutors_dev
       REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - ./backend:/app
     depends_on:
@@ -64,8 +66,8 @@ services:
       dockerfile: Dockerfile
     container_name: supertutors-frontend
     environment:
-      VITE_API_URL: http://localhost:5000
-      VITE_WS_URL: ws://localhost:5000
+      VITE_API_URL: http://localhost:5001
+      VITE_SOCKET_URL: http://localhost:5001
     ports:
       - "5173:5173"
     volumes:

@@ -21,7 +21,7 @@ import signal
 from contextlib import contextmanager
 
 import ollama
-from ollama import ChatResponse
+from ollama import Client, ChatResponse
 
 
 # Configure logging
@@ -80,7 +80,7 @@ class LLMService:
     with timeout protection, error handling, and optional streaming support.
 
     Attributes:
-        model_name: The Ollama model identifier (default: llama3.2-vision:11b)
+        model_name: The Ollama model identifier (default: llama3.2:lastest)
         timeout_seconds: Maximum time for each LLM call (default: 10)
         base_url: Ollama server URL (default: http://localhost:11434)
     """
@@ -94,13 +94,16 @@ class LLMService:
         """Initialize LLM service.
 
         Args:
-            model_name: Ollama model name (defaults to OLLAMA_MODEL env var or llama3.2-vision:11b)
+            model_name: Ollama model name (defaults to OLLAMA_MODEL env var or llama3.2:latest)
             timeout_seconds: Max seconds per LLM call (default: 10)
             base_url: Ollama server URL (defaults to OLLAMA_BASE_URL env var or localhost)
         """
-        self.model_name = model_name or os.environ.get('OLLAMA_MODEL', 'llama3.2-vision:11b')
+        self.model_name = model_name or os.environ.get('OLLAMA_MODEL', 'llama3.2:latest')
         self.timeout_seconds = timeout_seconds
         self.base_url = base_url or os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
+
+        # Create Ollama client with custom host
+        self.client = Client(host=self.base_url)
 
         logger.info(
             f"LLMService initialized: model={self.model_name}, "
@@ -155,7 +158,7 @@ class LLMService:
 
         try:
             with timeout_handler(self.timeout_seconds):
-                response: ChatResponse = ollama.chat(
+                response: ChatResponse = self.client.chat(
                     model=self.model_name,
                     messages=messages,
                     stream=stream,
@@ -208,7 +211,7 @@ class LLMService:
         """
         try:
             # Try to list models to verify Ollama is running
-            models = ollama.list()
+            models = self.client.list()
 
             # Check if our model is available
             model_available = any(

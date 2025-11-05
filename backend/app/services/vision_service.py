@@ -1,8 +1,9 @@
 """Vision AI Service - OCR extraction using Llama 3.2 Vision via Ollama."""
 import logging
+import os
 import re
 from typing import Dict, Any
-import ollama
+from ollama import Client
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,8 @@ class VisionService:
             model_name: Ollama vision model name
         """
         self.model_name = model_name
+        base_url = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
+        self.client = Client(host=base_url)
         logger.info(f"Initialized Vision service with model {model_name}")
 
     def extract_text_from_image(self, image_path: str) -> Dict[str, Any]:
@@ -44,7 +47,7 @@ class VisionService:
             logger.info(f"Extracting text from image: {image_path}")
 
             # Call Ollama Vision API
-            response = ollama.chat(
+            response = self.client.chat(
                 model=self.model_name,
                 messages=[{
                     'role': 'user',

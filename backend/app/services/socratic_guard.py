@@ -1,8 +1,9 @@
 """Socratic Guard Service - ensures tutor never gives direct answers."""
 import logging
+import os
 import re
 from typing import Dict, Tuple, Optional
-import ollama
+from ollama import Client
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,8 @@ class SocraticGuard:
         """
         self.model_name = model_name
         self.max_retries = max_retries
+        base_url = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
+        self.client = Client(host=base_url)
         logger.info(f"Initialized Socratic Guard with model {model_name}")
 
     def validate_response(
@@ -182,7 +185,7 @@ class SocraticGuard:
         )
 
         try:
-            response = ollama.chat(
+            response = self.client.chat(
                 model=self.model_name,
                 messages=[{'role': 'user', 'content': prompt}],
                 options={'temperature': 0.1}  # Low temperature for consistent validation
@@ -249,7 +252,7 @@ Student: {student_message}
 Respond as a Socratic tutor with a guiding question or hint (2-3 sentences max):"""
 
         try:
-            response = ollama.chat(
+            response = self.client.chat(
                 model=self.model_name,
                 messages=[{'role': 'user', 'content': prompt}],
                 options={'temperature': 0.7}
