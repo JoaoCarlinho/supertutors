@@ -3,21 +3,18 @@ import { useActions } from 'kea';
 import { conversationLogic } from '../../logic/conversationLogic';
 import { Math } from './Math';
 import { parseNaturalMathToLatex } from '../../utils/mathParser';
-import { ChatCanvas } from './ChatCanvas';
 
-export function ChatInput() {
+interface ChatInputProps {
+  onCanvasToggle: (show: boolean) => void;
+}
+
+export function ChatInput({ onCanvasToggle }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [isTypingDebounce, setIsTypingDebounce] = useState<NodeJS.Timeout | null>(null);
   const [mathMode, setMathMode] = useState(false);
   const [preview, setPreview] = useState('');
   const [previewError, setPreviewError] = useState(false);
-  const [showCanvas, setShowCanvas] = useState(false);
   const { sendMessage, setTyping } = useActions(conversationLogic);
-
-  const handleCanvasMessageSubmit = (text: string) => {
-    sendMessage(text);
-    setShowCanvas(false);
-  };
 
   // Update preview when in math mode
   useEffect(() => {
@@ -91,10 +88,7 @@ export function ChatInput() {
   };
 
   return (
-    <div className="border-t bg-white">
-      {/* ChatCanvas Overlay */}
-      {showCanvas && <ChatCanvas onMessageSubmit={handleCanvasMessageSubmit} />}
-
+    <div className="border-t bg-white relative z-30">
       {/* Math Mode Toggle and Shortcuts */}
       <div className="flex items-center gap-2 px-4 py-2 border-b bg-gray-50">
         <button
@@ -171,7 +165,7 @@ export function ChatInput() {
         {/* Image/Canvas Tools */}
         <button
           type="button"
-          onClick={() => setShowCanvas(true)}
+          onClick={() => onCanvasToggle(true)}
           className="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50"
           title="Upload image or draw"
         >

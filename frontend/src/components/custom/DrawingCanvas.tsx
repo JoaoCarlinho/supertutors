@@ -22,23 +22,40 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ onExport }) => {
   const [strokeWidth, setStrokeWidth] = useState(2);
   const [strokeColor, setStrokeColor] = useState('#000000');
   const stageRef = useRef<Konva.Stage>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [stageSize, setStageSize] = useState({
     width: 800,
     height: 600,
   });
 
-  // Responsive canvas sizing
+  // Responsive canvas sizing based on container
   useEffect(() => {
     const updateSize = () => {
-      const width = Math.min(window.innerWidth - 48, 800);
-      const height = Math.min((width * 3) / 4, 600);
-      setStageSize({ width, height });
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const width = containerWidth; // Use full container width
+        const height = Math.floor((width * 3) / 4); // Maintain 4:3 aspect ratio
+        setStageSize({ width, height });
+      }
     };
 
+    // Initial size
     updateSize();
+
+    // Update on window resize
     window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+
+    // Use ResizeObserver for container size changes
+    const resizeObserver = new ResizeObserver(updateSize);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      resizeObserver.disconnect();
+    };
   }, []);
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -86,21 +103,37 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ onExport }) => {
   const handleClear = () => {
     if (lines.length === 0) return;
 
-    if (confirm('Clear canvas? This cannot be undone.')) {
+    const userConfirmed = window.confirm('Clear canvas? This cannot be undone.');
+    if (userConfirmed) {
       setLines([]);
     }
   };
 
   const handleExport = () => {
-    if (!stageRef.current) return;
+    if (!stageRef.current) {
+      console.error('Canvas export failed: stageRef is null');
+      return;
+    }
 
+    if (lines.length === 0) {
+      alert('Canvas is empty. Please draw something first.');
+      return;
+    }
+
+    console.log('Exporting canvas drawing...');
     const dataUrl = stageRef.current.toDataURL({
       pixelRatio: 2,
       mimeType: 'image/png',
     });
 
+    console.log('Canvas exported to data URL, length:', dataUrl.length);
+
     if (onExport) {
+      console.log('Calling onExport callback...');
       onExport(dataUrl);
+    } else {
+      console.warn('No onExport callback provided');
+      alert('Export handler not configured. Please check console.');
     }
   };
 
@@ -111,12 +144,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ onExport }) => {
   };
 
   return (
-    <div className="drawing-canvas-container">
+    <div className="drawing-canvas-container" ref={containerRef}>
       {/* Toolbar */}
       <div className="toolbar flex items-center gap-2 mb-3 p-2 bg-gray-100 rounded flex-wrap">
         {/* Tool Selection */}
         <div className="flex gap-1">
           <button
+            type="button"
             onClick={() => setTool('pen')}
             className={`px-3 py-2 rounded text-sm font-medium ${
               tool === 'pen'
@@ -129,6 +163,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ onExport }) => {
             ✏️ Pen
           </button>
           <button
+            type="button"
             onClick={() => setTool('eraser')}
             className={`px-3 py-2 rounded text-sm font-medium ${
               tool === 'eraser'
@@ -175,25 +210,31 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ onExport }) => {
 
         {/* Actions */}
         <button
+          type="button"
           onClick={handleUndo}
           disabled={lines.length === 0}
           className="px-3 py-2 bg-white text-gray-700 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Undo last stroke"
+          aria-label="Undo last stroke"
         >
           ↶ Undo
         </button>
         <button
+          type="button"
           onClick={handleClear}
           disabled={lines.length === 0}
           className="px-3 py-2 bg-white text-red-600 rounded text-sm font-medium hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Clear canvas"
+          aria-label="Clear canvas"
         >
           🗑️ Clear
         </button>
         <button
+          type="button"
           onClick={handleExport}
           className="px-3 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
           title="Export drawing"
+          aria-label="Export drawing"
         >
           💾 Export
         </button>

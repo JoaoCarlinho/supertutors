@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useActions } from 'kea';
 import { conversationLogic } from './logic/conversationLogic';
-import { ConnectionStatus } from './components/custom/ConnectionStatus';
 import { ChatInput } from './components/custom/ChatInput';
 import { MessageList } from './components/custom/MessageList';
 import { ThreadList } from './components/custom/ThreadList';
@@ -9,14 +8,23 @@ import { StreakBadge } from './components/custom/StreakBadge';
 import { Celebration } from './components/custom/Celebration';
 import { SkipNav } from './components/custom/SkipNav';
 import { LiveRegion } from './components/custom/LiveRegion';
+import { ChatCanvas } from './components/custom/ChatCanvas';
+import { ValidationFeedback } from './components/custom/ValidationFeedback';
+import { ValidationTestPanel } from './components/custom/ValidationTestPanel';
 
 function App() {
-  const { initializeConnection } = useActions(conversationLogic);
+  const { initializeConnection, sendMessage } = useActions(conversationLogic);
+  const [showCanvas, setShowCanvas] = useState(false);
 
   // Initialize WebSocket connection on mount
   useEffect(() => {
     initializeConnection();
   }, [initializeConnection]);
+
+  const handleCanvasMessageSubmit = (text: string) => {
+    sendMessage(text);
+    setShowCanvas(false);
+  };
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -26,36 +34,40 @@ function App() {
       {/* ARIA Live Regions for screen reader announcements */}
       <LiveRegion />
 
-      {/* Header */}
-      <header className="bg-white border-b px-4 md:px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-blue-800">SuperTutors</h1>
-          <p className="text-xs md:text-sm text-gray-600">Socratic AI Tutor for 9th Grade Math</p>
-        </div>
-        <ConnectionStatus />
-      </header>
-
       {/* Main layout with sidebar and chat */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Thread List Sidebar */}
-        <aside
+        {/* Thread List Sidebar with Header */}
+        <div
           id="thread-list"
-          aria-label="Conversation threads"
-          className="hidden md:block md:w-64 lg:w-80"
+          className="hidden md:flex md:flex-col h-full"
         >
+          {/* Header - only above sidebar */}
+          <header className="bg-white border-b border-r px-4 py-4">
+            <h1 className="text-xl font-bold text-blue-800">SuperTutors</h1>
+            <p className="text-xs text-gray-600">Socratic AI Tutor</p>
+          </header>
           <ThreadList />
-        </aside>
+        </div>
 
         {/* Main Chat Area */}
         <main
           id="main-content"
-          className="flex-1 flex flex-col bg-white"
+          className="flex-1 flex flex-col bg-white relative overflow-hidden"
           role="main"
         >
           <h2 className="sr-only">Chat with AI Tutor</h2>
-          <MessageList />
+          {/* ChatCanvas Overlay - positioned at top of main area */}
+          {showCanvas && (
+            <ChatCanvas
+              onMessageSubmit={handleCanvasMessageSubmit}
+              onClose={() => setShowCanvas(false)}
+            />
+          )}
+          <div className="flex-1 overflow-hidden">
+            <MessageList />
+          </div>
           <div id="chat-input">
-            <ChatInput />
+            <ChatInput onCanvasToggle={setShowCanvas} />
           </div>
         </main>
       </div>
@@ -63,6 +75,12 @@ function App() {
       {/* Celebration System */}
       <StreakBadge />
       <Celebration />
+
+      {/* Answer Validation Feedback */}
+      <ValidationFeedback />
+
+      {/* Developer Test Panel (remove in production) */}
+      <ValidationTestPanel />
     </div>
   );
 }

@@ -89,12 +89,12 @@ export function ThreadList() {
 
   return (
     <aside
-      className="w-64 bg-white border-r border-gray-200 flex flex-col"
+      className="w-64 flex-1 min-h-0 bg-white border-r border-gray-200 flex flex-col"
       role="navigation"
       aria-label="Conversation threads"
     >
       {/* New Thread Button */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="flex-shrink-0 p-4 border-b border-gray-200">
         <button
           onClick={handleNewThread}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -105,7 +105,7 @@ export function ThreadList() {
       </div>
 
       {/* Thread List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {isLoading ? (
           <div className="p-4 text-center text-gray-500">Loading...</div>
         ) : threads.length === 0 ? (
@@ -116,14 +116,16 @@ export function ThreadList() {
         ) : (
           <div className="divide-y divide-gray-100">
             {threads.map((thread) => (
-              <button
+              <div
                 key={thread.id}
-                onClick={() => handleSelectThread(thread.id)}
-                className={`w-full text-left p-4 hover:bg-gray-50 transition-colors group relative ${
+                className={`relative group ${
                   currentConversationId === thread.id ? 'bg-blue-50 border-l-4 border-blue-600' : ''
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
+                <button
+                  onClick={() => handleSelectThread(thread.id)}
+                  className="w-full text-left p-4 pr-12 hover:bg-gray-50 transition-colors"
+                >
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-sm text-gray-900 truncate">
                       {thread.title}
@@ -137,15 +139,23 @@ export function ThreadList() {
                       {formatTimestamp(thread.updated_at)}
                     </p>
                   </div>
-                  <button
-                    onClick={(e) => handleDeleteThread(thread.id, e)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded"
-                    aria-label="Delete conversation"
-                  >
-                    <TrashIcon className="w-4 h-4 text-red-600" />
-                  </button>
-                </div>
-              </button>
+                </button>
+                <span
+                  onClick={(e) => handleDeleteThread(thread.id, e as any)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleDeleteThread(thread.id, e as any);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded cursor-pointer"
+                  aria-label={`Delete conversation: ${thread.title}`}
+                >
+                  <TrashIcon className="w-4 h-4 text-red-600" />
+                </span>
+              </div>
             ))}
           </div>
         )}
