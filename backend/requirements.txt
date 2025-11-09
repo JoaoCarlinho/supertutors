@@ -25,6 +25,7 @@ pylint==3.3.6
 
 # LLM Integration
 ollama==0.6.0
+openai>=1.0.0
 
 # Symbolic Math
 sympy==1.14.0
