@@ -82,9 +82,8 @@ def get_thread(thread_id):
         JSON object with conversation and messages
     """
     try:
-        # Load conversation with messages
+        # Load conversation (messages loaded via dynamic relationship)
         conversation = db.session.query(Conversation)\
-            .options(joinedload(Conversation.messages))\
             .filter_by(id=thread_id)\
             .first()
 
@@ -95,11 +94,8 @@ def get_thread(thread_id):
                 404
             )
 
-        # Build response
-        messages = [msg.to_dict() for msg in sorted(
-            conversation.messages.all(),
-            key=lambda m: m.created_at
-        )]
+        # Build response - messages already ordered by created_at in relationship
+        messages = [msg.to_dict() for msg in conversation.messages.all()]
 
         response = {
             'id': str(conversation.id),
