@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate Celebration Sounds</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      margin: 10px 5px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .preview {
+      background: #eff6ff;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border-left: 4px solid #3b82f6;
+    }
+    .info {
+      background: #fef3c7;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 6px;
+      border-left: 4px solid #f59e0b;
+    }
+    .success {
+      background: #d1fae5;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 6px;
+      border-left: 4px solid #10b981;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎵 SuperTutors Sound Generator</h1>
+    <p>Generate procedural celebration sounds using Web Audio API</p>
+
+    <div class="info">
+      <strong>⚠️ Note:</strong> These are synthetic sounds. For better quality, download from:
+      <ul>
+        <li><a href="https://pixabay.com/sound-effects/search/achievement/" target="_blank">Pixabay (CC0)</a></li>
+        <li><a href="https://mixkit.co/free-sound-effects/win/" target="_blank">Mixkit (Free)</a></li>
+      </ul>
+    </div>
+
+    <h2>Preview & Generate Sounds</h2>
+
+    <div class="preview">
+      <h3>Correct Answer Cheers (5 variations)</h3>
+      <button onclick="playAndGenerate('correct-1', 400, 0.1)">🔊 Play & Generate correct-1.mp3</button>
+      <button onclick="playAndGenerate('correct-2', 600, 0.12)">🔊 Play & Generate correct-2.mp3</button>
+      <button onclick="playAndGenerate('correct-3', 800, 0.14)">🔊 Play & Generate correct-3.mp3</button>
+      <button onclick="playAndGenerate('correct-4', 500, 0.11)">🔊 Play & Generate correct-4.mp3</button>
+      <button onclick="playAndGenerate('correct-5', 700, 0.13)">🔊 Play & Generate correct-5.mp3</button>
+    </div>
+
+    <div class="preview">
+      <h3>Streak Celebrations</h3>
+      <button onclick="playAndGenerateCelebration('celebration-1', 1)">🔊 Play & Generate celebration-1.mp3 (3-streak)</button>
+      <button onclick="playAndGenerateCelebration('celebration-2', 2)">🔊 Play & Generate celebration-2.mp3 (6-streak)</button>
+      <button onclick="playAndGenerateCelebration('celebration-3', 3)">🔊 Play & Generate celebration-3.mp3 (9-streak)</button>
+      <button onclick="playAndGenerateCelebration('streak-milestone', 4)">🔊 Play & Generate streak-milestone.mp3 (15+)</button>
+    </div>
+
+    <div class="success" id="status" style="display: none;">
+      <strong>✅ Generated!</strong> <span id="statusText"></span>
+    </div>
+
+    <h2>📥 Quick Download Instructions</h2>
+    <ol>
+      <li>Click each button above to preview and generate the sound</li>
+      <li>Browser will download the MP3 file</li>
+      <li>Move all 9 files to: <code>frontend/public/sounds/</code></li>
+      <li>Refresh your SuperTutors app to hear them!</li>
+    </ol>
+
+    <div class="info">
+      <strong>💡 Better Alternative:</strong> For higher quality sounds, run this in terminal:
+      <pre style="background: #1f2937; color: #fff; padding: 10px; border-radius: 4px; overflow-x: auto;">node frontend/download-sounds.js</pre>
+    </div>
+  </div>
+
+  <script>
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    function generateCheerSound(frequency, duration) {
+      const sampleRate = audioContext.sampleRate;
+      const length = sampleRate * duration;
+      const buffer = audioContext.createBuffer(1, length, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      // Create a pleasant "ding" sound with envelope
+      for (let i = 0; i < length; i++) {
+        const t = i / sampleRate;
+        const envelope = Math.exp(-t * 8); // Quick decay
+        const tone = Math.sin(2 * Math.PI * frequency * t);
+        const harmonics = 0.3 * Math.sin(2 * Math.PI * frequency * 2 * t);
+        data[i] = (tone + harmonics) * envelope * 0.3;
+      }
+
+      return buffer;
+    }
+
+    function generateCelebrationSound(intensity) {
+      const sampleRate = audioContext.sampleRate;
+      const duration = 0.8 + (intensity * 0.2);
+      const length = sampleRate * duration;
+      const buffer = audioContext.createBuffer(1, length, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      // Create ascending celebration tones
+      for (let i = 0; i < length; i++) {
+        const t = i / sampleRate;
+        const progress = i / length;
+        const envelope = Math.sin(progress * Math.PI); // Smooth envelope
+
+        // Multiple tones for richer sound
+        let sample = 0;
+        const baseFreq = 400 + (intensity * 100);
+        sample += Math.sin(2 * Math.PI * baseFreq * t);
+        sample += 0.5 * Math.sin(2 * Math.PI * (baseFreq * 1.5) * t);
+        sample += 0.3 * Math.sin(2 * Math.PI * (baseFreq * 2) * t);
+
+        data[i] = sample * envelope * 0.15;
+      }
+
+      return buffer;
+    }
+
+    function playAndGenerate(name, frequency, duration) {
+      // Play the sound
+      const buffer = generateCheerSound(frequency, duration);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start();
+
+      // Convert to WAV and download
+      setTimeout(() => {
+        downloadSound(buffer, name);
+      }, 100);
+    }
+
+    function playAndGenerateCelebration(name, intensity) {
+      // Play the sound
+      const buffer = generateCelebrationSound(intensity);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start();
+
+      // Convert to WAV and download
+      setTimeout(() => {
+        downloadSound(buffer, name);
+      }, 100);
+    }
+
+    function downloadSound(buffer, name) {
+      // Convert AudioBuffer to WAV
+      const wav = bufferToWave(buffer);
+      const blob = new Blob([wav], { type: 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+
+      // Create download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Show status
+      const status = document.getElementById('status');
+      const statusText = document.getElementById('statusText');
+      statusText.textContent = `${name}.wav downloaded! (Convert to MP3 if needed)`;
+      status.style.display = 'block';
+      setTimeout(() => {
+        status.style.display = 'none';
+      }, 3000);
+    }
+
+    function bufferToWave(buffer) {
+      const length = buffer.length * buffer.numberOfChannels * 2 + 44;
+      const arrayBuffer = new ArrayBuffer(length);
+      const view = new DataView(arrayBuffer);
+      const channels = [];
+      let offset = 0;
+      let pos = 0;
+
+      // Write WAV header
+      setUint32(0x46464952); // "RIFF"
+      setUint32(length - 8); // file length - 8
+      setUint32(0x45564157); // "WAVE"
+
+      setUint32(0x20746d66); // "fmt " chunk
+      setUint32(16); // length = 16
+      setUint16(1); // PCM (uncompressed)
+      setUint16(buffer.numberOfChannels);
+      setUint32(buffer.sampleRate);
+      setUint32(buffer.sampleRate * 2 * buffer.numberOfChannels); // avg. bytes/sec
+      setUint16(buffer.numberOfChannels * 2); // block-align
+      setUint16(16); // 16-bit
+
+      setUint32(0x61746164); // "data" - chunk
+      setUint32(length - pos - 4); // chunk length
+
+      // Write interleaved data
+      for (let i = 0; i < buffer.numberOfChannels; i++)
+        channels.push(buffer.getChannelData(i));
+
+      while (pos < length) {
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+          let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+          view.setInt16(pos, sample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+
+      return arrayBuffer;
+
+      function setUint16(data) {
+        view.setUint16(pos, data, true);
+        pos += 2;
+      }
+
+      function setUint32(data) {
+        view.setUint32(pos, data, true);
+        pos += 4;
+      }
+    }
+  </script>
+</body>
+</html>
