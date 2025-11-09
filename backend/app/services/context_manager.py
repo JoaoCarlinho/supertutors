@@ -34,6 +34,8 @@ class ConversationContextManager:
         """
         n_messages = include_last_n or self.max_context_messages
 
+        logger.info(f"[CONTEXT] Retrieving context for conversation_id={conversation_id}, type={type(conversation_id)}, n_messages={n_messages}")
+
         # Get recent messages
         messages = db.session.query(Message)\
             .filter_by(conversation_id=conversation_id)\
@@ -41,7 +43,10 @@ class ConversationContextManager:
             .limit(n_messages)\
             .all()
 
+        logger.info(f"[CONTEXT] Retrieved {len(messages)} messages from database")
+
         if not messages:
+            logger.warning(f"[CONTEXT] No messages found for conversation {conversation_id}")
             return ""
 
         # Reverse to get chronological order
@@ -51,9 +56,13 @@ class ConversationContextManager:
         context_lines = []
         for msg in messages:
             role = msg.role.value.capitalize()
+            preview = msg.content[:50] + '...' if len(msg.content) > 50 else msg.content
             context_lines.append(f"{role}: {msg.content}")
+            logger.debug(f"[CONTEXT] Added message: {role}: {preview}")
 
-        return "\n".join(context_lines)
+        result = "\n".join(context_lines)
+        logger.info(f"[CONTEXT] Formatted context: {len(result)} characters, {len(context_lines)} messages")
+        return result
 
     def extract_student_intent(self, student_message: str) -> dict:
         """Extract student's learning intent and difficulty areas.
@@ -122,8 +131,11 @@ class ConversationContextManager:
         Returns:
             Context summary dictionary
         """
+        logger.info(f"[CONTEXT_SUMMARY] Building context summary for conversation {conversation_id}")
+
         # Get conversation history
         history = self.get_conversation_context(conversation_id, include_last_n=5)
+        logger.info(f"[CONTEXT_SUMMARY] Got history: {len(history)} characters")
 
         # Analyze current message
         intent = self.extract_student_intent(current_message)
@@ -134,7 +146,9 @@ class ConversationContextManager:
             .filter_by(conversation_id=conversation_id)\
             .count()
 
-        return {
+        logger.info(f"[CONTEXT_SUMMARY] Message count: {message_count}, is_first: {message_count == 0}")
+
+        summary = {
             'conversation_id': str(conversation_id),
             'title': conversation.title if conversation else None,
             'message_count': message_count,
@@ -143,3 +157,6 @@ class ConversationContextManager:
             'current_message': current_message,
             'is_first_message': message_count == 0
         }
+
+        logger.info(f"[CONTEXT_SUMMARY] Built summary with recent_history length: {len(summary['recent_history'])}")
+        return summary
