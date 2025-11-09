@@ -11,6 +11,7 @@ import { LiveRegion } from './components/custom/LiveRegion';
 import { ChatCanvas } from './components/custom/ChatCanvas';
 import { ValidationFeedback } from './components/custom/ValidationFeedback';
 import { ValidationTestPanel } from './components/custom/ValidationTestPanel';
+import { AudioControls } from './components/custom/AudioControls';
 
 function App() {
   const { initializeConnection, sendMessage } = useActions(conversationLogic);
@@ -42,9 +43,12 @@ function App() {
           className="hidden md:flex md:flex-col h-full"
         >
           {/* Header - only above sidebar */}
-          <header className="bg-white border-b border-r px-4 py-4">
-            <h1 className="text-xl font-bold text-blue-800">SuperTutors</h1>
-            <p className="text-xs text-gray-600">Socratic AI Tutor</p>
+          <header className="bg-white border-b border-r px-4 py-4 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-blue-800">SuperTutors</h1>
+              <p className="text-xs text-gray-600">Socratic AI Tutor</p>
+            </div>
+            <AudioControls />
           </header>
           <ThreadList />
         </div>
