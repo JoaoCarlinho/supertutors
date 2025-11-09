@@ -16,3 +16,5 @@ backend/app/routes/__pycache__/images.cpython-311.pyc
 backend/app/routes/__pycache__/socket_events.cpython-311.pyc
 backend/app/routes/__pycache__/threads.cpython-311.pyc
 .env
+download-pixabay-sounds.sh
+frontend/download-sounds.js

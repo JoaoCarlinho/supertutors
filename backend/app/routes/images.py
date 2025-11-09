@@ -9,7 +9,8 @@ from app.services.vision_service import VisionService
 logger = logging.getLogger(__name__)
 
 images_bp = Blueprint('images', __name__, url_prefix='/api/images')
-vision_service = VisionService()
+# Using gpt-4o (gpt-4-vision-preview is deprecated)
+vision_service = VisionService(model_name="gpt-4o")
 
 # Configuration
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
@@ -105,16 +106,18 @@ def upload_image():
 def extract_ocr():
     """Extract text from uploaded image using OCR.
 
-    Accepts JSON with image_id or multipart/form-data with image file.
+    Accepts JSON with image_id (and optional subject) or multipart/form-data with image file.
     Returns extracted text, confidence, and math detection flag.
     """
     try:
         image_path = None
+        subject = None
 
         # Check if image_id is provided (for already uploaded images)
         if request.is_json:
             data = request.get_json()
             image_id = data.get('image_id')
+            subject = data.get('subject')  # Optional: 'algebra', 'geometry', 'arithmetic'
 
             if not image_id:
                 return jsonify({
@@ -159,8 +162,8 @@ def extract_ocr():
             }), 400
 
         # Process with OCR
-        logger.info(f"Processing OCR for image: {image_path}")
-        result = vision_service.extract_text_from_image(image_path)
+        logger.info(f"Processing OCR for image: {image_path}, subject: {subject}")
+        result = vision_service.extract_text_from_image(image_path, subject=subject)
 
         if not result['success']:
             return jsonify(result), 500
