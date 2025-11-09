@@ -14,6 +14,7 @@ class Conversation(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = db.Column(db.Text, nullable=True)  # Auto-generated from first message
+    consecutive_correct_count = db.Column(db.Integer, nullable=False, default=0)  # Streak tracking
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
@@ -45,6 +46,7 @@ class Conversation(db.Model):
         return {
             'id': str(self.id),
             'title': self.title,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'consecutive_correct_count': self.consecutive_correct_count,
+            'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }
