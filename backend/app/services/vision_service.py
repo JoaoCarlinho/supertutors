@@ -1,63 +1,141 @@
-"""Vision AI Service - OCR extraction using Llama 3.2 Vision via Ollama."""
+"""Vision AI Service - OCR extraction using OpenAI GPT-4 Vision."""
 import logging
 import os
 import re
+import base64
 from typing import Dict, Any
-from ollama import Client
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-OCR_PROMPT = """You are an OCR system specialized in extracting mathematical content.
+OCR_PROMPT = """You are a vision AI that MUST read EXACTLY what is written in the image. Your job is OCR (Optical Character Recognition) - reading text, NOT generating math problems.
 
-Analyze this image and extract:
-1. All text content (preserve structure and formatting)
-2. All mathematical expressions (convert to LaTeX when possible using $ delimiters)
-3. Equations, formulas, and diagrams
+⚠️ CRITICAL WARNING ⚠️
+DO NOT generate random equations. DO NOT make up math problems. DO NOT use examples.
+You MUST read ONLY what is actually written in the image, character by character.
 
-If the image contains handwritten content, do your best to interpret it accurately.
-If you find mathematical notation, wrap it in $ for inline math or $$ for display math.
+**STEP 1: Describe what you see**
+Look at the image and describe the mathematical notation character by character from left to right.
 
-Return only the extracted content, formatted clearly."""
+**STEP 2: Identify problem type**
+- ALGEBRA: has variables (x, y, etc.) and equations
+- GEOMETRY: has shapes, diagrams, or geometric figures
+- ARITHMETIC: only numbers and basic operations (+, -, ×, ÷)
+
+**STEP 3: Extract EXACTLY what is written**
+
+Read character by character from left to right. For example:
+- If you see "3", write "3" (not 5, not 2, not any other number)
+- If you see "x", write "x" (not y, not z)
+- If you see "+", write "+" (not -, not ×)
+- If you see "2", write "2" (not 5, not 7)
+- If you see "=", write "=" (exactly as shown)
+- If you see "5", write "5" (not 20, not 7)
+
+**STEP 4: Format output**
+
+FOR ALGEBRA (with variables):
+Format: "Linear equation: $[exactly what you read]$"
+Example: If you read "3x + 2 = 5", output "Linear equation: $3x + 2 = 5$"
+
+FOR GEOMETRY (shapes):
+Format: "[Shape type] with [measurements you see]"
+
+FOR ARITHMETIC (numbers only):
+Format: "Arithmetic: $[exactly what you read]$"
+
+⚠️ VERIFICATION CHECK ⚠️
+Before responding, ask yourself:
+1. Did I read each character from the actual image?
+2. Did I make up ANY numbers or variables?
+3. Does my answer match EXACTLY what is written?
+
+If you cannot read the handwriting clearly, say "Cannot read clearly" instead of guessing."""
 
 
 class VisionService:
-    """Service for Vision AI OCR using Llama 3.2 Vision."""
+    """Service for Vision AI OCR using OpenAI GPT-4 Vision."""
 
-    def __init__(self, model_name: str = "llama3.2-vision:11b"):
+    def __init__(self, model_name: str = "gpt-4o"):
         """Initialize Vision service.
 
         Args:
-            model_name: Ollama vision model name
+            model_name: OpenAI vision model name (gpt-4o or gpt-4-vision-preview)
         """
         self.model_name = model_name
-        base_url = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
-        self.client = Client(host=base_url)
+        api_key = os.environ.get('OPENAI_API_KEY')
+
+        if not api_key:
+            logger.error("OPENAI_API_KEY not found in environment variables")
+            raise ValueError("OPENAI_API_KEY is required")
+
+        self.client = OpenAI(api_key=api_key)
         logger.info(f"Initialized Vision service with model {model_name}")
 
-    def extract_text_from_image(self, image_path: str) -> Dict[str, Any]:
+    def extract_text_from_image(self, image_path: str, subject: str = None) -> Dict[str, Any]:
         """Extract text and math from image using Vision AI.
 
         Args:
             image_path: Path to image file
+            subject: Optional subject hint ('algebra', 'geometry', 'arithmetic')
 
         Returns:
             Dictionary with success, extracted_text, confidence, math_detected
         """
         try:
-            logger.info(f"Extracting text from image: {image_path}")
+            logger.info(f"Extracting text from image: {image_path}, subject: {subject}")
 
-            # Call Ollama Vision API
-            response = self.client.chat(
+            # Encode image as base64
+            with open(image_path, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+
+            # Determine image format from file extension
+            image_format = image_path.split('.')[-1].lower()
+            if image_format == 'jpg':
+                image_format = 'jpeg'
+
+            # Build prompt with subject hint if provided
+            prompt_text = OCR_PROMPT
+            if subject:
+                subject_hints = {
+                    'algebra': 'The student indicated this is an ALGEBRA problem (equations, expressions, variables). Focus on extracting equations and algebraic expressions.',
+                    'geometry': 'The student indicated this is a GEOMETRY problem (shapes, figures, measurements). Focus on identifying geometric shapes and their properties.',
+                    'arithmetic': 'The student indicated this is an ARITHMETIC problem (basic calculations). Focus on extracting numbers and operations.'
+                }
+                hint = subject_hints.get(subject.lower(), '')
+                if hint:
+                    prompt_text = f"{hint}\n\n{OCR_PROMPT}"
+
+            # Call OpenAI Vision API
+            response = self.client.chat.completions.create(
                 model=self.model_name,
-                messages=[{
-                    'role': 'user',
-                    'content': OCR_PROMPT,
-                    'images': [image_path]
-                }],
-                options={'temperature': 0.1}  # Low temperature for consistent OCR
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt_text
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/{image_format};base64,{base64_image}",
+                                    "detail": "high"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=1000,
+                temperature=0.3  # Slightly higher temperature for better handwriting interpretation
             )
 
-            extracted_text = response['message']['content'].strip()
+            extracted_text = response.choices[0].message.content.strip()
+
+            # Log the actual extracted text for debugging
+            logger.info(f"RAW OCR OUTPUT: {extracted_text}")
+            logger.info(f"Subject hint used: {subject}")
 
             # Estimate confidence based on response characteristics
             confidence = self._estimate_confidence(extracted_text)
@@ -78,19 +156,8 @@ class VisionService:
                 'math_detected': math_detected
             }
 
-        except ollama.ResponseError as e:
-            error_msg = f"Ollama error: {str(e)}"
-            logger.error(f"OCR failed: {error_msg}")
-            return {
-                'success': False,
-                'error': "Failed to process image. Please try again.",
-                'extracted_text': '',
-                'confidence': 0.0,
-                'math_detected': False
-            }
-
         except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
+            error_msg = f"OpenAI Vision API error: {str(e)}"
             logger.error(f"OCR failed: {error_msg}")
             return {
                 'success': False,
@@ -112,20 +179,15 @@ class VisionService:
         if not extracted_text or len(extracted_text) < 5:
             return 0.3  # Very low confidence for minimal text
 
-        # Factors that increase confidence:
-        # 1. Reasonable text length (20-1000 chars ideal)
-        # 2. Presence of complete words
-        # 3. Proper capitalization/punctuation
-        # 4. Math notation detected
-
-        confidence = 0.5  # Base confidence
+        # GPT-4 Vision is generally high quality, start with higher base
+        confidence = 0.7  # Base confidence for GPT-4 Vision
 
         # Length factor
         text_length = len(extracted_text)
         if 20 <= text_length <= 1000:
-            confidence += 0.2
+            confidence += 0.15
         elif text_length > 1000:
-            confidence += 0.1
+            confidence += 0.05
 
         # Word completeness (no excessive fragmentation)
         words = extracted_text.split()
@@ -133,13 +195,9 @@ class VisionService:
         if avg_word_length >= 4:
             confidence += 0.1
 
-        # Punctuation/structure
-        if any(char in extracted_text for char in ['.', ',', '?', '!']):
-            confidence += 0.1
-
-        # Math notation
+        # Math notation (GPT-4 is very good at this)
         if self._detect_math(extracted_text):
-            confidence += 0.1
+            confidence += 0.05
 
         return min(confidence, 1.0)
 
@@ -157,7 +215,9 @@ class VisionService:
             return True
 
         # Check for mathematical symbols
-        math_symbols = ['×', '÷', '±', '≠', '≤', '≥', '√', 'π', '∫', '∑', '∞', '=']
+        math_symbols = [
+            '×', '÷', '±', '≠', '≤', '≥', '√', 'π', '∫', '∑', '∞', '='
+        ]
         if any(symbol in text for symbol in math_symbols):
             return True
 
@@ -173,21 +233,19 @@ class VisionService:
         return False
 
     def check_model_availability(self) -> Dict[str, Any]:
-        """Check if Vision model is available.
+        """Check if OpenAI API is available.
 
         Returns:
             Dictionary with status and model info
         """
         try:
-            models = ollama.list()
-            model_names = [model['name'] for model in models.get('models', [])]
-
-            available = any(self.model_name in name for name in model_names)
+            # Try a simple API call to check availability
+            self.client.models.list()
 
             return {
-                'available': available,
+                'available': True,
                 'model': self.model_name,
-                'installed_models': model_names
+                'provider': 'OpenAI'
             }
 
         except Exception as e:
