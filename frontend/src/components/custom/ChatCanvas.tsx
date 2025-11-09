@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { ImageUpload } from './ImageUpload';
 import { OCRConfirmation } from './OCRConfirmation';
 import { DrawingCanvas } from './DrawingCanvas';
+import { SubjectSelection } from './SubjectSelection';
 
-type Mode = 'closed' | 'upload' | 'ocr' | 'draw';
+type Mode = 'closed' | 'upload' | 'subject' | 'ocr' | 'draw';
 
 interface ChatCanvasProps {
   onMessageSubmit: (message: string) => void;
@@ -13,6 +14,7 @@ interface ChatCanvasProps {
 export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose }) => {
   const [mode, setMode] = useState<Mode>('upload');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<string | null>(null);
   const [ocrData, setOcrData] = useState<{
     text: string;
     confidence: number;
@@ -25,10 +27,22 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
   const handleImageUploadComplete = async (uploadedImageId: string, uploadedImageUrl: string) => {
     console.log('handleImageUploadComplete called with:', { uploadedImageId, uploadedImageUrl });
     setImageUrl(`${apiUrl}${uploadedImageUrl}`);
+    setImageId(uploadedImageId);
 
-    // Start OCR processing
+    // Show subject selection instead of immediately processing OCR
+    setMode('subject');
+    console.log('Switched to subject selection mode');
+  };
+
+  const handleSubjectSelected = async (subject: string) => {
+    if (!imageId) {
+      console.error('No image ID available for OCR');
+      return;
+    }
+
+    // Start OCR processing with subject context
     setIsProcessing(true);
-    console.log('Starting OCR processing...');
+    console.log('Starting OCR processing with subject:', subject);
 
     try {
       const ocrUrl = `${apiUrl}/api/images/ocr/extract`;
@@ -46,7 +60,10 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ image_id: uploadedImageId }),
+        body: JSON.stringify({
+          image_id: imageId,
+          subject: subject
+        }),
         signal: controller.signal,
       });
 
@@ -81,6 +98,12 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
       setIsProcessing(false);
       console.log('OCR processing complete, isProcessing set to false');
     }
+  };
+
+  const handleSubjectCancel = () => {
+    setMode('upload');
+    setImageUrl(null);
+    setImageId(null);
   };
 
   const handleOCRConfirm = (editedText: string) => {
@@ -123,8 +146,10 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
       console.log('Upload response data:', uploadData);
 
       if (uploadData.success) {
-        console.log('Upload successful, processing with OCR...');
-        // Process with OCR
+        console.log('Upload successful, showing subject selection...');
+        // Stop processing spinner, show subject selection
+        setIsProcessing(false);
+        // This will show subject selection UI
         handleImageUploadComplete(uploadData.image_id, uploadData.url);
       } else {
         console.error('Upload failed:', uploadData.error);
@@ -219,6 +244,14 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
             <ImageUpload
               onImageSelected={(file) => console.log('Image selected:', file)}
               onUploadComplete={handleImageUploadComplete}
+            />
+          )}
+
+          {!isProcessing && mode === 'subject' && imageUrl && (
+            <SubjectSelection
+              imageUrl={imageUrl}
+              onSubjectSelected={handleSubjectSelected}
+              onCancel={handleSubjectCancel}
             />
           )}
 

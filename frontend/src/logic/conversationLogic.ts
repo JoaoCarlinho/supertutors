@@ -17,6 +17,22 @@ export interface Message {
   metadata?: Record<string, unknown>;
 }
 
+export interface ValidationResult {
+  correct: boolean;
+  student_answer: string;
+  expected_answer: string;
+  explanation: string;
+  is_approximate: boolean;
+}
+
+export interface AnswerValidationResponse {
+  conversation_id: string;
+  is_correct: boolean;
+  new_streak: number;
+  celebration_triggered: boolean;
+  validation?: ValidationResult;
+}
+
 export const conversationLogic = kea({
   path: ['conversation'],
   actions: {
@@ -40,6 +56,18 @@ export const conversationLogic = kea({
     loadThread: (threadId: string) => ({ threadId }),
     // @ts-expect-error - Kea action typing requires kea-typegen
     setMessages: (messages: Message[]) => ({ messages }),
+    // Answer validation actions
+    // @ts-expect-error - Kea action typing requires kea-typegen
+    validateAnswer: (studentAnswer: string, expectedAnswer?: string, context?: string) => ({
+      studentAnswer,
+      expectedAnswer,
+      context
+    }),
+    // @ts-expect-error - Kea action typing requires kea-typegen
+    receiveValidationResult: (result: AnswerValidationResponse) => ({ result }),
+    // @ts-expect-error - Kea action typing requires kea-typegen
+    setValidationError: (error: string) => ({ error }),
+    clearValidationResult: () => ({}),
   },
 
   reducers: {
@@ -74,6 +102,13 @@ export const conversationLogic = kea({
       [] as Message[],
       {
         receiveMessage: (state, { message }) => {
+          // Check for duplicate message IDs to prevent duplication
+          const messageExists = state.some((msg: Message) => msg.id === message.id);
+          if (messageExists) {
+            // Message already exists, don't add duplicate
+            return state;
+          }
+
           // Insert message in chronological order
           const newMessages = [...state, message];
           return newMessages.sort((a, b) =>
@@ -85,7 +120,12 @@ export const conversationLogic = kea({
             msg.id === messageId ? { ...msg, status } : msg
           );
         },
-        setMessages: (_, { messages }) => messages,
+        setMessages: (_, { messages }) => {
+          // Sort messages chronologically to ensure consistent ordering
+          return messages.sort((a: Message, b: Message) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        },
       },
     ],
     isTyping: [
@@ -94,11 +134,43 @@ export const conversationLogic = kea({
         setTyping: (_, { isTyping }) => isTyping,
       },
     ],
+    validationResult: [
+      null as AnswerValidationResponse | null,
+      {
+        receiveValidationResult: (_, { result }) => result,
+        clearValidationResult: () => null,
+      },
+    ],
+    validationError: [
+      null as string | null,
+      {
+        setValidationError: (_, { error }) => error,
+        clearValidationResult: () => null,
+      },
+    ],
+    isValidating: [
+      false as boolean,
+      {
+        validateAnswer: () => true,
+        receiveValidationResult: () => false,
+        setValidationError: () => false,
+      },
+    ],
   },
 
   listeners: ({ actions, values }) => ({
     initializeConnection: () => {
       const socket = initializeSocket();
+
+      // Guard: Remove existing listeners before attaching to prevent duplication
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.off('message:receive');
+      socket.off('message:ack');
+      socket.off('message:error');
+      socket.off('answer:validated');
+      socket.off('answer:validation_error');
 
       // Update connection status based on socket events
       socket.on('connect', () => {
@@ -127,6 +199,17 @@ export const conversationLogic = kea({
       socket.on('message:error', ({ message_id, error }: { message_id: string; error: string }) => {
         console.error('Message error:', error);
         actions.updateMessageStatus(message_id, 'error');
+      });
+
+      // Answer validation listeners
+      socket.on('answer:validated', (response: AnswerValidationResponse) => {
+        console.log('Answer validation received:', response);
+        actions.receiveValidationResult(response);
+      });
+
+      socket.on('answer:validation_error', ({ error }: { error: string }) => {
+        console.error('Answer validation error:', error);
+        actions.setValidationError(error);
       });
 
       // Set initial status
@@ -189,6 +272,32 @@ export const conversationLogic = kea({
           conversation_id: values.currentConversationId,
         });
       }
+    },
+
+    validateAnswer: ({ studentAnswer, expectedAnswer, context }) => {
+      const socket = values.socket;
+      if (!socket) {
+        console.error('Socket not initialized');
+        actions.setValidationError('Not connected to server');
+        return;
+      }
+
+      if (!values.currentConversationId) {
+        console.error('No active conversation');
+        actions.setValidationError('No active conversation');
+        return;
+      }
+
+      console.log('Validating answer:', { studentAnswer, expectedAnswer, context });
+
+      // Emit validation request to server
+      socket.emit('answer:validate', {
+        conversation_id: values.currentConversationId,
+        student_answer: studentAnswer,
+        expected_answer: expectedAnswer,
+        context: context,
+        current_streak: 0, // Will be updated by server
+      });
     },
 
     loadThread: async ({ threadId }) => {
