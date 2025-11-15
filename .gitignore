@@ -18,3 +18,5 @@ backend/app/routes/__pycache__/threads.cpython-311.pyc
 .env
 download-pixabay-sounds.sh
 frontend/download-sounds.js
+__pycache__/
+sounds/
