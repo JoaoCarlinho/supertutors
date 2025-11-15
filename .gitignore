@@ -20,3 +20,6 @@ download-pixabay-sounds.sh
 frontend/download-sounds.js
 __pycache__/
 sounds/
+backend/.env
+backend/.env
+backend/.env.aws.example
