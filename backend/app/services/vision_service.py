@@ -36,7 +36,6 @@ Read character by character from left to right. For example:
 
 FOR ALGEBRA (with variables):
 Format: "Linear equation: $[exactly what you read]$"
-Example: If you read "3x + 2 = 5", output "Linear equation: $3x + 2 = 5$"
 
 FOR GEOMETRY (shapes):
 Format: "[Shape type] with [measurements you see]"
