@@ -1,4 +1,6 @@
 docs/
+bmad/
+.DS_Store
 test-results/
 playwright-report/
 venv/
@@ -23,3 +25,9 @@ sounds/
 backend/.env
 backend/.env
 backend/.env.aws.example
+
+# Ignore iac
+infrastructure/
+
+# Ignore uploaded files
+backend/app/uploads/
