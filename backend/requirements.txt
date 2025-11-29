@@ -27,8 +27,21 @@ pylint==3.3.6
 ollama==0.6.0
 openai>=1.0.0
 
+# Math OCR (Hybrid Pipeline - Story 8-2)
+# pix2text for specialized math OCR extraction
+# Optional: Falls back to GPT-4o if unavailable
+pix2text>=1.1.0
+
 # Symbolic Math
 sympy==1.14.0
 
 # Production Server
 gunicorn==23.0.0
+
+# Redis Cache (Story 8-3)
+# Connection to local Redis and AWS ElastiCache
+redis>=5.0.0
+
+# AWS SDK (for Bedrock)
+boto3==1.36.12
+botocore==1.36.12
