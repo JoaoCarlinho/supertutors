@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ImageUpload } from './ImageUpload';
 import { OCRConfirmation } from './OCRConfirmation';
 import { DrawingCanvas } from './DrawingCanvas';
 import { SubjectSelection } from './SubjectSelection';
+import { getSocket, initializeSocket } from '@/lib/socketService';
 
 type Mode = 'closed' | 'upload' | 'subject' | 'ocr' | 'draw';
+
+interface OCRProgress {
+  stage: string;
+  message: string;
+  percent: number | null;
+}
 
 interface ChatCanvasProps {
   onMessageSubmit: (message: string) => void;
@@ -20,9 +27,102 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
     confidence: number;
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState<OCRProgress | null>(null);
+  const processingImageIdRef = useRef<string | null>(null);
 
   // Get API URL from environment
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
+  // Setup WebSocket listeners for OCR progress
+  useEffect(() => {
+    const socket = getSocket() || initializeSocket();
+
+    const handleOcrProgress = (data: OCRProgress & { image_id: string }) => {
+      // Only update if this progress is for our current image
+      if (data.image_id === processingImageIdRef.current) {
+        console.log('[OCR Progress]', data);
+        setOcrProgress({
+          stage: data.stage,
+          message: data.message,
+          percent: data.percent
+        });
+      }
+    };
+
+    const handleOcrComplete = (data: {
+      success: boolean;
+      image_id: string;
+      extracted_text?: string;
+      confidence?: number;
+      error?: string;
+    }) => {
+      // Only process if this is for our current image
+      if (data.image_id !== processingImageIdRef.current) return;
+
+      console.log('[OCR Complete]', data);
+      setIsProcessing(false);
+      setOcrProgress(null);
+      processingImageIdRef.current = null;
+
+      if (data.success && data.extracted_text) {
+        setOcrData({
+          text: data.extracted_text,
+          confidence: data.confidence || 0.8,
+        });
+        setMode('ocr');
+      } else {
+        alert(`OCR failed: ${data.error || 'Unknown error'}`);
+        setMode('closed');
+      }
+    };
+
+    const handleOcrError = (data: { error: string; image_id?: string }) => {
+      if (data.image_id && data.image_id !== processingImageIdRef.current) return;
+
+      console.error('[OCR Error]', data);
+      setIsProcessing(false);
+      setOcrProgress(null);
+      processingImageIdRef.current = null;
+      alert(`OCR error: ${data.error}`);
+      setMode('closed');
+    };
+
+    socket.on('ocr:progress', handleOcrProgress);
+    socket.on('ocr:complete', handleOcrComplete);
+    socket.on('ocr:error', handleOcrError);
+
+    return () => {
+      socket.off('ocr:progress', handleOcrProgress);
+      socket.off('ocr:complete', handleOcrComplete);
+      socket.off('ocr:error', handleOcrError);
+    };
+  }, []);
+
+  // Helper function to get human-readable progress descriptions
+  const getProgressStageDescription = (stage: string | undefined): string => {
+    switch (stage) {
+      case 'started':
+        return 'Starting OCR processing...';
+      case 'optimizing_image':
+        return 'Optimizing image for better accuracy...';
+      case 'loading_pix2text_models':
+        return 'Loading math recognition models...';
+      case 'pix2text_processing':
+        return 'Extracting mathematical expressions...';
+      case 'gpt4o_verifying':
+        return 'Verifying results with AI vision...';
+      case 'gpt4o_processing':
+        return 'Processing with AI vision model...';
+      case 'cache_hit':
+        return 'Found cached result!';
+      case 'completed':
+        return 'Processing complete!';
+      case 'error':
+        return 'An error occurred';
+      default:
+        return 'Extracting text and equations from your image';
+    }
+  };
 
   const handleImageUploadComplete = async (uploadedImageId: string, uploadedImageUrl: string) => {
     console.log('handleImageUploadComplete called with:', { uploadedImageId, uploadedImageUrl });
@@ -40,20 +140,42 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
       return;
     }
 
-    // Start OCR processing with subject context
+    // Start OCR processing with subject context via WebSocket
     setIsProcessing(true);
-    console.log('Starting OCR processing with subject:', subject);
+    setOcrProgress({ stage: 'starting', message: 'Initializing...', percent: 0 });
+    processingImageIdRef.current = imageId;
+    console.log('Starting OCR processing via WebSocket with subject:', subject);
 
+    const socket = getSocket();
+    if (!socket || !socket.connected) {
+      console.error('Socket not connected, falling back to HTTP');
+      // Fallback to HTTP if WebSocket not available
+      await handleSubjectSelectedHTTP(subject);
+      return;
+    }
+
+    // Send OCR request via WebSocket
+    socket.emit('ocr:process', {
+      image_id: imageId,
+      subject: subject,
+      method: 'hybrid'
+    });
+
+    console.log('OCR request sent via WebSocket');
+  };
+
+  // Fallback HTTP method for OCR (kept for reliability)
+  const handleSubjectSelectedHTTP = async (subject: string) => {
     try {
       const ocrUrl = `${apiUrl}/api/images/ocr/extract`;
       console.log('Sending OCR request to:', ocrUrl);
 
-      // Create abort controller for timeout
+      // Create abort controller for timeout (increased to 180s)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         controller.abort();
-        console.warn('OCR request timed out after 60 seconds');
-      }, 60000); // 60 second timeout
+        console.warn('OCR request timed out after 180 seconds');
+      }, 180000); // 180 second timeout (increased from 60)
 
       const response = await fetch(ocrUrl, {
         method: 'POST',
@@ -89,13 +211,15 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
     } catch (error) {
       console.error('OCR error:', error);
       if (error instanceof Error && error.name === 'AbortError') {
-        alert('OCR processing is taking longer than expected. The vision model may be slow. Please try again or contact support.');
+        alert('OCR processing timed out. Please try again.');
       } else {
         alert(`Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
       setMode('closed');
     } finally {
       setIsProcessing(false);
+      setOcrProgress(null);
+      processingImageIdRef.current = null;
       console.log('OCR processing complete, isProcessing set to false');
     }
   };
@@ -234,9 +358,26 @@ export const ChatCanvas: React.FC<ChatCanvasProps> = ({ onMessageSubmit, onClose
           {isProcessing && (
             <div className="flex flex-col items-center justify-center py-8">
               <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mb-3"></div>
-              <p className="text-gray-600 font-medium">Processing with Vision AI...</p>
-              <p className="text-sm text-gray-500 mt-2">This may take 30-60 seconds</p>
-              <p className="text-xs text-gray-400 mt-1">Extracting text and equations from your drawing</p>
+              <p className="text-gray-600 font-medium">
+                {ocrProgress?.message || 'Processing with Vision AI...'}
+              </p>
+              {/* Progress bar */}
+              {ocrProgress?.percent !== null && ocrProgress?.percent !== undefined && (
+                <div className="w-64 bg-gray-200 rounded-full h-2.5 mt-3">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${ocrProgress.percent}%` }}
+                  ></div>
+                </div>
+              )}
+              <p className="text-sm text-gray-500 mt-2">
+                {ocrProgress?.percent !== null && ocrProgress?.percent !== undefined
+                  ? `${ocrProgress.percent}% complete`
+                  : 'This may take 30-60 seconds'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {getProgressStageDescription(ocrProgress?.stage)}
+              </p>
             </div>
           )}
 

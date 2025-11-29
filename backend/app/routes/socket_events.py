@@ -497,3 +497,123 @@ def handle_answer_validation(data):
             'error': 'Failed to validate answer',
             'conversation_id': data.get('conversation_id')
         })
+
+
+@socketio.on('ocr:process')
+def handle_ocr_process(data):
+    """Handle OCR processing with progress updates via WebSocket.
+
+    Expected data:
+        - image_id: UUID of uploaded image
+        - subject: Optional subject hint ('algebra', 'geometry', 'arithmetic')
+        - method: OCR method ('hybrid', 'gpt4o', 'pix2text')
+
+    Emits:
+        - ocr:progress: Progress updates during processing
+        - ocr:complete: Final OCR result
+        - ocr:error: Error information if processing fails
+    """
+    import os
+    import hashlib
+    from app.services.hybrid_ocr_service import (
+        HybridOCRService, optimize_image_for_ocr, OCRProgressStage
+    )
+    from app.services.redis_service import get_redis_service
+
+    try:
+        image_id = data.get('image_id')
+        subject = data.get('subject')
+        method = data.get('method', 'hybrid')
+
+        if not image_id:
+            emit('ocr:error', {'error': 'Missing image_id'})
+            return
+
+        logger.info(f"[OCR WebSocket] Processing image {image_id}")
+
+        # Find image file
+        UPLOAD_FOLDER = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 'uploads'
+        )
+        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+        image_path = None
+        for ext in ALLOWED_EXTENSIONS:
+            filepath = os.path.join(UPLOAD_FOLDER, f"{image_id}.{ext}")
+            if os.path.exists(filepath):
+                image_path = filepath
+                break
+
+        if not image_path:
+            emit('ocr:error', {'error': 'Image not found', 'image_id': image_id})
+            return
+
+        # Calculate image hash for caching
+        with open(image_path, 'rb') as f:
+            image_hash = hashlib.md5(f.read()).hexdigest()[:8]
+
+        # Check cache first
+        redis_service = get_redis_service()
+        if redis_service and redis_service.is_connected():
+            cached = redis_service.get_cached_ocr(image_hash, subject)
+            if cached:
+                logger.info(f"[OCR WebSocket] Cache hit for {image_hash}")
+                emit('ocr:progress', {
+                    'stage': 'cache_hit',
+                    'message': 'Found cached result',
+                    'percent': 100
+                })
+                emit('ocr:complete', {
+                    'success': True,
+                    'cached': True,
+                    **cached
+                })
+                return
+
+        # Define progress callback that emits WebSocket events
+        def progress_callback(stage: str, message: str, percent: int = None):
+            logger.info(f"[OCR Progress] {stage}: {message} ({percent}%)")
+            emit('ocr:progress', {
+                'stage': stage,
+                'message': message,
+                'percent': percent,
+                'image_id': image_id
+            })
+
+        # Process OCR with progress updates
+        emit('ocr:progress', {
+            'stage': OCRProgressStage.STARTED,
+            'message': 'Starting OCR processing',
+            'percent': 0,
+            'image_id': image_id
+        })
+
+        # Initialize service and process
+        hybrid_service = HybridOCRService()
+        result = hybrid_service.extract(
+            image_path,
+            subject=subject,
+            method=method,
+            progress_callback=progress_callback
+        )
+
+        # Cache successful result
+        if redis_service and redis_service.is_connected() and result.get('success'):
+            redis_service.cache_ocr_result(image_hash, result, subject)
+
+        # Send final result
+        emit('ocr:complete', {
+            'success': result.get('success', False),
+            'image_id': image_id,
+            'image_hash': image_hash,
+            **result
+        })
+
+        logger.info(f"[OCR WebSocket] Completed for {image_id}")
+
+    except Exception as e:
+        logger.error(f"Error in ocr:process: {e}", exc_info=True)
+        emit('ocr:error', {
+            'error': str(e),
+            'image_id': data.get('image_id')
+        })
