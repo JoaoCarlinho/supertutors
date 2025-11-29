@@ -40,6 +40,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: supertutors-backend
+    env_file:
+      - .env
     environment:
       FLASK_ENV: development
       FLASK_DEBUG: "True"
@@ -48,6 +50,7 @@ services:
       DATABASE_URL: postgresql://supertutors:devpassword@postgres:5432/supertutors_dev
       REDIS_URL: redis://redis:6379/0
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3.2:latest
     ports:
       - "5001:5000"
     volumes:
