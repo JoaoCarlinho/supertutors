@@ -31,3 +31,4 @@ infrastructure/
 
 # Ignore uploaded files
 backend/app/uploads/
+logs/
