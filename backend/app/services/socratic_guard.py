@@ -322,10 +322,47 @@ class SocraticGuard:
                     math_info += f"  Solution steps: {len(expr['steps'])} steps available\n"
             math_info += "\nUse this information to ask questions that guide the student toward these insights, but NEVER reveal the answers directly.\n"
 
-        # Force subject clarification for OCR content
+        # Image awareness instructions for OCR content (Story 8-4, AC-6)
         ocr_instruction = ""
         if is_from_image:
-            ocr_instruction = "\n\n⚠️ IMAGE/DRAWING DETECTED - MANDATORY ACTION REQUIRED:\nThis content came from an uploaded image or drawing. You MUST ask the student what they're trying to solve or calculate BEFORE providing any other guidance. Do not skip this step."
+            # Check if this is geometry content (Story 8-5, AC-6)
+            is_geometry = self._detect_geometry_content(student_message)
+
+            if is_geometry:
+                ocr_instruction = """
+
+⚠️ GEOMETRY DIAGRAM DETECTED - MANDATORY ACTION REQUIRED:
+This content came from an uploaded geometric diagram.
+
+GEOMETRY AWARENESS GUIDELINES (Story 8-5):
+- Reference the shapes naturally: "I see you have a triangle with sides 3, 4, and 5..."
+- Reference measurements: "Looking at angle ABC which measures 90 degrees..."
+- Reference relationships: "I notice that lines AB and CD are parallel..."
+- If you see a right angle (marked with a small square), acknowledge it explicitly
+- If confidence is low (<80%), ask for confirmation: "I think side AB is 5cm, is that correct?"
+- Ask what they're trying to find or prove BEFORE providing guidance
+- Example: "I see Triangle ABC with a right angle at C. What would you like to find - the area, the hypotenuse, or something else?"
+
+GEOMETRY-SPECIFIC QUESTIONS TO ASK:
+- "What type of triangle/shape do you see here?"
+- "What theorem or property might apply to this shape?"
+- "What do you know about the relationship between these elements?"
+- "Can you identify any special properties (right angles, parallel lines, congruent sides)?"
+
+Do not skip these steps - acknowledge the geometry diagram first."""
+            else:
+                ocr_instruction = """
+
+⚠️ IMAGE/DRAWING DETECTED - MANDATORY ACTION REQUIRED:
+This content came from an uploaded image or drawing.
+
+IMAGE AWARENESS GUIDELINES:
+- Reference the uploaded content naturally: "I see you wrote..." or "Looking at the equation you uploaded..."
+- If confidence is mentioned as low (<80%), ask for confirmation: "I think you wrote X, is that correct?"
+- You MUST ask the student what they're trying to solve or calculate BEFORE providing any other guidance.
+- Example good response: "I see you've written 3x + 2 = 5. What would you like to do with this equation?"
+
+Do not skip these steps - acknowledge the image first."""
 
         # Build context section (avoid backslashes in f-string expressions)
         context_section = ""
@@ -609,5 +646,78 @@ Respond as a Socratic tutor (2-3 sentences max):"""
         if '$' in message and any(c.isalpha() for c in message):
             # Has LaTeX delimiters and variables - likely from OCR
             return True
+
+        return False
+
+    def _detect_geometry_content(self, message: str) -> bool:
+        """Detect if message content is geometry-related (Story 8-5, AC-6).
+
+        Looks for patterns that indicate the message contains geometric
+        shapes, measurements, or relationships from geometry OCR.
+
+        Args:
+            message: The student message to analyze
+
+        Returns:
+            True if message appears to contain geometry content
+        """
+        message_lower = message.lower()
+
+        # Geometry shape indicators
+        shape_keywords = [
+            'triangle', 'circle', 'rectangle', 'square', 'polygon',
+            'parallelogram', 'trapezoid', 'rhombus', 'pentagon',
+            'hexagon', 'octagon', 'quadrilateral', 'line segment',
+            'ray', 'arc', 'chord', 'tangent', 'secant'
+        ]
+
+        # Geometry measurement indicators
+        measurement_keywords = [
+            'angle', 'degree', 'radius', 'diameter', 'circumference',
+            'perimeter', 'area', 'volume', 'surface area', 'height',
+            'base', 'hypotenuse', 'leg', 'altitude', 'median',
+            'side length', 'vertex', 'vertices'
+        ]
+
+        # Geometry relationship indicators
+        relationship_keywords = [
+            'parallel', 'perpendicular', 'congruent', 'similar',
+            'bisect', 'bisector', 'midpoint', 'inscribed',
+            'circumscribed', 'tangent to', 'intersect'
+        ]
+
+        # Geometry theorem/property indicators
+        theorem_keywords = [
+            'pythagorean', 'theorem', 'sohcahtoa', 'sine', 'cosine',
+            'tangent', 'isosceles', 'equilateral', 'scalene',
+            'right angle', 'acute', 'obtuse', 'supplementary',
+            'complementary', 'vertical angles', 'corresponding'
+        ]
+
+        # Check for any geometry indicators
+        all_keywords = (
+            shape_keywords + measurement_keywords +
+            relationship_keywords + theorem_keywords
+        )
+
+        for keyword in all_keywords:
+            if keyword in message_lower:
+                return True
+
+        # Check for geometry notation patterns
+        geometry_patterns = [
+            r'triangle\s+[A-Z]{3}',  # Triangle ABC
+            r'angle\s+[A-Z]{1,3}',  # Angle A, Angle ABC
+            r'∠[A-Z]{1,3}',  # ∠ABC
+            r'[A-Z]{2}\s*[|‖]\s*[A-Z]{2}',  # AB || CD (parallel)
+            r'[A-Z]{2}\s*[⊥]\s*[A-Z]{2}',  # AB ⊥ CD (perpendicular)
+            r'\d+\s*°',  # 90°
+            r'\d+\s*degrees?',  # 90 degrees
+            r'side\s+[A-Z]{2}',  # side AB
+        ]
+
+        for pattern in geometry_patterns:
+            if re.search(pattern, message, re.IGNORECASE):
+                return True
 
         return False

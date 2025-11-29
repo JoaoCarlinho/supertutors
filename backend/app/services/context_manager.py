@@ -1,10 +1,19 @@
-"""Conversation Context Manager - maintains conversation history and context."""
+"""Conversation Context Manager - maintains conversation history and context.
+
+Enhanced with OCR context integration (Story 8-4):
+- Include image OCR results in conversation context
+- Low-confidence indicator for uncertain extractions
+- Format image context for tutor awareness
+"""
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from app.models import Message, Conversation
 from app.extensions import db
 
 logger = logging.getLogger(__name__)
+
+# Confidence threshold for OCR results (AC-3)
+LOW_CONFIDENCE_THRESHOLD = 0.8
 
 
 class ConversationContextManager:
@@ -52,17 +61,97 @@ class ConversationContextManager:
         # Reverse to get chronological order
         messages = list(reversed(messages))
 
-        # Format as conversation
+        # Format as conversation with OCR context (Story 8-4, AC-3)
         context_lines = []
         for msg in messages:
             role = msg.role.value.capitalize()
             preview = msg.content[:50] + '...' if len(msg.content) > 50 else msg.content
+
+            # Check for OCR data in message metadata (AC-3)
+            if msg.message_metadata and msg.message_metadata.get('ocr_result'):
+                image_context = self._format_image_context(msg.message_metadata)
+                context_lines.append(image_context)
+                logger.debug(f"[CONTEXT] Added image context for message")
+
             context_lines.append(f"{role}: {msg.content}")
             logger.debug(f"[CONTEXT] Added message: {role}: {preview}")
 
         result = "\n".join(context_lines)
         logger.info(f"[CONTEXT] Formatted context: {len(result)} characters, {len(context_lines)} messages")
         return result
+
+    def _format_image_context(self, metadata: Dict[str, Any]) -> str:
+        """Format image OCR metadata for conversation context (Story 8-4, AC-3).
+
+        Args:
+            metadata: Message metadata containing OCR result
+
+        Returns:
+            Formatted image context string for tutor awareness
+        """
+        ocr_result = metadata.get('ocr_result', '')
+        confidence = metadata.get('ocr_confidence', 0.9)
+        problem_type = metadata.get('problem_type', 'unknown')
+        latex = metadata.get('ocr_latex', '')
+
+        # Build context string with confidence indicator
+        if confidence < LOW_CONFIDENCE_THRESHOLD:
+            context = f"[Student uploaded image (low confidence {confidence:.0%}): {ocr_result}]"
+            logger.info(f"[CONTEXT] Low confidence image context: {confidence:.0%}")
+        else:
+            context = f"[Student uploaded image: {ocr_result}]"
+
+        # Add problem type if detected
+        if problem_type and problem_type != 'unknown':
+            context = context.replace(']', f' - {problem_type} problem]')
+
+        # Add LaTeX if available and different from plain text
+        if latex and latex != ocr_result:
+            context = context.replace(']', f' (LaTeX: {latex})]')
+
+        return context
+
+    def format_geometry_context(self, geometry_result: Dict[str, Any]) -> str:
+        """Format geometry OCR result for tutor context (Story 8-5 preparation).
+
+        Args:
+            geometry_result: GeometryResult dict with shapes, relationships, etc.
+
+        Returns:
+            Formatted geometry context string
+        """
+        parts = ["[Student uploaded geometry diagram:"]
+
+        # Add shapes
+        shapes = geometry_result.get('shapes', [])
+        if shapes:
+            shape_desc = ", ".join([
+                f"{s.get('type', 'shape')} {s.get('labels', [])}"
+                for s in shapes[:3]  # Limit to 3 shapes for context brevity
+            ])
+            parts.append(f"  Shapes: {shape_desc}")
+
+        # Add relationships
+        relationships = geometry_result.get('relationships', [])
+        if relationships:
+            rel_desc = ", ".join([
+                f"{r.get('type', 'related')} ({r.get('elements', [])})"
+                for r in relationships[:2]
+            ])
+            parts.append(f"  Relationships: {rel_desc}")
+
+        # Add problem text
+        problem_text = geometry_result.get('problem_text', [])
+        if problem_text:
+            parts.append(f"  Problem: {' '.join(problem_text)}")
+
+        # Add given information
+        given = geometry_result.get('given_information', [])
+        if given:
+            parts.append(f"  Given: {', '.join(given[:3])}")
+
+        parts.append("]")
+        return "\n".join(parts)
 
     def extract_student_intent(self, student_message: str) -> dict:
         """Extract student's learning intent and difficulty areas.
